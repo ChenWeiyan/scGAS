@@ -1,0 +1,47 @@
+#' scGAS: Single-Cell Gene Activation Potential Inference
+#'
+#' @description
+#' \pkg{scGAS} infers Gene Activation Potential (GAS) from single-cell
+#' ATAC-seq data using a pre-built bulk-tissue reference map of cCRE-to-gene
+#' associations and per-gene Lasso regression models.
+#'
+#' ## Main workflow
+#'
+#' The package exposes four exported functions that mirror the four main stages
+#' of the analysis:
+#'
+#' | Step | Function | Description |
+#' |------|----------|-------------|
+#' | 1 | \code{\link{scgas_preprocess}} | Map fragment files onto reference cCREs, run QC, TF-IDF / LSI, and high-resolution clustering to define Metacells. |
+#' | 2 | \code{\link{scgas_train_models}} | Aggregate cells into Metacells, train one Lasso model per gene using ENCODE bulk data, and predict Metacell-level GAS. |
+#' | 3 | \code{\link{scgas_compute}} | Propagate Metacell GAS to single-cell resolution via Gaussian-kernel initialisation and mutual-KNN network propagation. |
+#' | 4 | \code{\link{scgas_chromatin_potential}} | Build and visualise the Chromatin Potential Field linking chromatin activation to transcriptomic state. |
+#'
+#' The helper \code{\link{scgas_add_assay}} embeds the scGAS matrix back into
+#' a \code{SeuratObject} for downstream analysis with the Seurat ecosystem.
+#'
+#' ## Key concepts
+#'
+#' \describe{
+#'   \item{Reference map}{A set of cCRE-Gene pairs derived from 167 ENCODE
+#'     bulk DNase-seq / RNA-seq samples.  Each pair is statistically
+#'     significant after testing against a null distribution matched on cCRE
+#'     signal strength.}
+#'   \item{Metacell}{A cluster of similar cells whose aggregated ATAC signal
+#'     is sufficient to produce reliable quantitative differences across
+#'     features.  High-resolution clustering (resolution ≥ 1.4) keeps each
+#'     cluster ≥ 100 cells while maximising cell-type resolution.}
+#'   \item{Network propagation}{A random-walk with restart over the mutual-KNN
+#'     graph.  Only the top-scoring fraction of cells (by scGAS0) are used as
+#'     seed nodes, amplifying biologically meaningful signal over noise.}
+#'   \item{Chromatin Potential Field}{An embedding-space vector field
+#'     constructed by finding, for each cell, the K RNA-neighbours most
+#'     correlated with that cell's scGAS profile.  The arrow direction
+#'     predicts the transcriptional trajectory implied by the current
+#'     chromatin state.}
+#' }
+#'
+#' @docType package
+#' @name scGAS-package
+#' @aliases scGAS
+"_PACKAGE"

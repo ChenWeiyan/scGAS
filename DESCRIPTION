@@ -1,0 +1,44 @@
+Package: scGAS
+Type: Package
+Title: Single-Cell Gene Activation Potential Inference via Reference Map
+Version: 0.1.0
+Authors@R: person("Weiyan", "Chen", email = "weiyan.chen@bric.ku.dk",
+    role = c("aut", "cre"))
+Description: scGAS infers Gene Activation Potential (GAS) from single-cell
+    ATAC-seq data using a bulk-tissue reference map of cCRE-Gene associations
+    and Lasso regression models. It implements four main steps: (1) preprocessing
+    scATAC-seq data against reference cCREs, (2) training per-gene Lasso models
+    on ENCODE bulk data, (3) computing and propagating scGAS scores to single-cell
+    resolution via Metacells and network propagation, and (4) constructing and
+    visualising the Chromatin Potential Field that links chromatin activation to
+    transcriptomic state.
+License: MIT LICENSE
+Encoding: UTF-8
+LazyData: false
+Depends:
+    R (>= 4.1.0)
+Imports:
+    Seurat (>= 4.0.0),
+    Signac (>= 1.7.0),
+    Matrix,
+    MatrixGenerics,
+    GenomicRanges,
+    rtracklayer,
+    parallel,
+    glmnet,
+    glmnetUtils,
+    SCAVENGE,
+    ggplot2,
+    cowplot,
+    methods,
+    stats,
+    utils
+Suggests:
+    EnsDb.Hsapiens.v75,
+    EnsDb.Hsapiens.v86,
+    BiocGenerics,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+RoxygenNote: 7.3.1
+VignetteBuilder: knitr

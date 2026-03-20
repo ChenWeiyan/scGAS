@@ -1,0 +1,236 @@
+---
+title: "scGAS Workflow: Gene Activation Potential from scATAC-seq"
+author: "Weiyan Chen"
+date: "`r Sys.Date()`"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{scGAS Workflow}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment  = "#>",
+  eval     = FALSE   # set to TRUE only in a live environment
+)
+```
+
+## Overview
+
+**scGAS** infers Gene Activation Potential (GAS) from single-cell ATAC-seq
+(scATAC-seq) data.  The framework:
+
+1. Maps raw scATAC-seq fragments onto a reference set of 500 bp chromatin
+   accessible bins (cCREs) derived from 124 ENCODE DNase-seq samples.
+2. Uses statistically significant cCRE-to-Gene associations from 167 paired
+   ENCODE bulk DNase-seq / RNA-seq samples to train a per-gene **Lasso
+   regression model**.
+3. Aggregates cells into **Metacells** (high-resolution clusters ≥ 100 cells)
+   to overcome single-cell sparsity, applies the Lasso models to obtain
+   Metacell-level GAS, then propagates GAS to **single-cell resolution** via
+   Gaussian-kernel initialisation and random-walk network propagation.
+4. Links chromatin activation to transcriptional state through a
+   **Chromatin Potential Field** that predicts differentiation trajectories.
+
+---
+
+## Installation
+
+```{r install}
+# Install from GitHub
+remotes::install_github("ChenWeiyan/scGAS")
+
+# Bioconductor dependencies
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install(c("Signac", "EnsDb.Hsapiens.v75", "SCAVENGE"))
+```
+
+---
+
+## Step 0 — Prepare inputs
+
+### Required files
+
+| File | Description |
+|------|-------------|
+| `hg19_500bp_CRE.bed` | Reference cCRE BED (provided with the package or downloadable) |
+| `*_fragments.tsv.gz` | Per-replicate fragment files from Cell Ranger ATAC or multiome |
+| `ENCODE_167Tissue_SigAss_pVal.05.rds` | Pre-computed cCRE-Gene association list |
+| `ENCODE_167Tissue_RNA_LogNorm.rds` | ENCODE bulk RNA-seq log-normalised matrix |
+| `ENCODE_167Tissue_CRE_LogNorm.rds` | ENCODE bulk DNase-seq log-normalised matrix |
+
+The three `.rds` files are available from the scGAS project data repository
+(see README for the download link).
+
+### Gene annotations
+
+```{r annotations}
+library(EnsDb.Hsapiens.v75)
+library(Signac)
+
+annotation <- GetGRangesFromEnsDb(EnsDb.Hsapiens.v75)
+seqlevelsStyle(annotation) <- "UCSC"
+genome(annotation) <- "hg19"
+```
+
+---
+
+## Step 1 — Preprocess scATAC-seq data (`scgas_preprocess`)
+
+`scgas_preprocess()` handles fragment loading, feature-matrix construction,
+QC metric computation, TF-IDF / LSI dimensionality reduction, and
+high-resolution clustering.
+
+```{r preprocess}
+library(scGAS)
+
+obj <- scgas_preprocess(
+  fragment_paths     = c("rep1_atac_fragments.tsv.gz",
+                         "rep2_atac_fragments.tsv.gz"),
+  cre_bed_path       = "hg19_500bp_CRE.bed",
+  annotation         = annotation,
+  replicate_ids      = c("cd34_multiome_rep1#", "cd34_multiome_rep2#"),
+  lsi_dims           = 2:30,
+  cluster_resolution = 1.4,   # ≥1.4 recommended; lower if clusters < 100 cells
+  min_cells_per_cluster = 100,
+  n_cores            = 8,
+  verbose            = TRUE
+)
+```
+
+> **Tip — multiome data:** If you have matched RNA, supply `rna_matrix` and
+> `meta_data` directly:
+> ```{r preprocess_multiome, eval=FALSE}
+> obj <- scgas_preprocess(
+>   ...,
+>   rna_matrix = scRNA_sparse_matrix,
+>   meta_data  = cell_metadata_df
+> )
+> ```
+
+Inspect the QC distribution before proceeding:
+
+```{r qc_plot}
+library(Seurat)
+VlnPlot(obj, features = c("nFeature_ATAC", "TSS.enrichment",
+                           "nucleosome_signal"), ncol = 3, pt.size = 0)
+```
+
+---
+
+## Step 2 — Train Lasso models and compute Metacell GAS (`scgas_train_models`)
+
+```{r train}
+# Load pre-computed ENCODE reference data
+sig_ass  <- readRDS("ENCODE_167Tissue_SigAss_pVal.05.rds")
+rna_enc  <- readRDS("ENCODE_167Tissue_RNA_LogNorm.rds")
+dnase_enc <- readRDS("ENCODE_167Tissue_CRE_LogNorm.rds")
+
+models <- scgas_train_models(
+  seurat_obj           = obj,
+  sig_associations     = sig_ass,
+  encode_rna_lognorm   = rna_enc,
+  encode_dnase_lognorm = dnase_enc,
+  cre_bed_path         = "hg19_500bp_CRE.bed",
+  min_associations     = NULL,   # NULL → use median as threshold
+  n_cores              = 8,
+  verbose              = TRUE
+)
+
+# How many genes were modelled?
+length(models)
+```
+
+The returned list carries the trained model for each gene plus the
+normalised Metacell ATAC matrix as an attribute — passed automatically to
+`scgas_compute()`.
+
+---
+
+## Step 3 — Propagate GAS to single-cell resolution (`scgas_compute`)
+
+```{r compute}
+scgas_mat <- scgas_compute(
+  seurat_obj     = obj,
+  trained_models = models,
+  lsi_dims       = 2:30,
+  knn_k          = 30,
+  seed_fraction  = 0.10,   # top 10 % of cells used as propagation seeds
+  gamma          = 0.05,
+  n_cores        = 8,
+  verbose        = TRUE
+)
+
+dim(scgas_mat)   # genes × cells
+```
+
+Add the scGAS matrix back to the Seurat object and run dimensionality
+reduction:
+
+```{r add_assay}
+obj <- scgas_add_assay(
+  seurat_obj        = obj,
+  scgas_mat         = scgas_mat,
+  run_dim_reduction = TRUE,
+  n_pcs             = 30,
+  n_neighbors       = 30
+)
+
+# Visualise key marker genes
+library(Seurat)
+FeaturePlot(obj, features = c("GATA1", "MS4A1", "HOXA9", "CEBPA"),
+            reduction = "scgasumap", ncol = 2)
+```
+
+---
+
+## Step 4 — Chromatin Potential Field (`scgas_chromatin_potential`)
+
+The CPF predicts differentiation flow by linking each cell's scGAS profile to
+its most transcriptomically correlated neighbours.
+
+```{r cpf}
+cpf <- scgas_chromatin_potential(
+  seurat_obj   = obj,
+  n_hvg        = 2000,
+  knn_k        = 10,
+  n_cores      = 8,
+  arrow_scale  = 1.5,
+  point_colour = "celltype",   # metadata column
+  title        = "CD34+ BM Chromatin Potential Field"
+)
+
+# Print the vector-field plot
+print(cpf$plot)
+
+# The underlying data frame
+head(cpf$cpf_df)
+```
+
+To highlight a specific lineage, subset the gene set used for CPF:
+
+```{r cpf_lineage}
+lineage3_genes <- c("HBD", "HBB", "GATA1", "KLF1")   # erythroid markers
+
+cpf_ery <- scgas_chromatin_potential(
+  seurat_obj   = obj,
+  n_hvg        = 500,
+  knn_k        = 10,
+  title        = "Erythroid lineage — CPF"
+)
+print(cpf_ery$plot)
+```
+
+---
+
+## Session information
+
+```{r session}
+sessionInfo()
+```
