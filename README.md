@@ -21,9 +21,7 @@ data by combining:
 
 The method is described in:
 
-> Chen W. *Construction of Gene Regulatory Reference Map with its application
-> on Gene Activation Potential inference.* PhD Thesis, Shanghai Institute of
-> Nutrition and Health, CAS, 2023.
+> 
 
 ---
 
@@ -116,9 +114,6 @@ The following pre-computed files are required and can be downloaded from
 If you use scGAS please cite:
 
 ```
-Chen, W. (2023). Construction of Gene Regulatory Reference Map with its
-application on Gene Activation Potential inference [PhD Thesis].
-Shanghai Institute of Nutrition and Health, Chinese Academy of Sciences.
 ```
 
 ---
