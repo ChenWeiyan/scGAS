@@ -31,7 +31,7 @@ The method is described in:
 
 ```r
 # Install development version from GitHub
-remotes::install_github("yourname/scGAS")
+remotes::install_github("ChenWeiyan/scGAS")
 
 # Required Bioconductor packages
 BiocManager::install(c("Signac", "EnsDb.Hsapiens.v75", "SCAVENGE"))
