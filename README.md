@@ -90,12 +90,12 @@ print(cpf$plot)
 The following pre-computed files are required and can be downloaded from
 [Zenodo](https://zenodo.org) *(10.5281/zenodo.19134899)*:
 
-| File | Description | Size |
-|------|-------------|------|
-| `hg19_500bp_CRE.bed` | 1.8 M reference cCRE bins (hg19) | ~45 MB |
-| `ENCODE_167Tissue_SigAss_pVal.05.rds` | Significant cCRE-Gene pairs | ~120 MB |
-| `ENCODE_167Tissue_RNA_LogNorm.rds` | ENCODE bulk RNA-seq matrix | ~25 MB |
-| `ENCODE_167Tissue_CRE_LogNorm.rds` | ENCODE bulk DNase-seq matrix | ~210 MB |
+| File | Description |
+|------|-------------|
+| `hg19_500bp_CRE.bed` | 1.8 M reference cCRE bins (hg19) |
+| `ENCODE_167Tissue_SigAss_pVal.05.rds` | Significant cCRE-Gene pairs |
+| `ENCODE_167Tissue_RNA_LogNorm.rds` | ENCODE bulk RNA-seq matrix |
+| `ENCODE_167Tissue_CRE_LogNorm.rds` | ENCODE bulk DNase-seq matrix |
 
 ---
 
