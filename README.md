@@ -125,4 +125,4 @@ Shanghai Institute of Nutrition and Health, Chinese Academy of Sciences.
 
 ## License
 
-MIT © 2024 Weiyan Chen
+MIT © 2026 Weiyan Chen
