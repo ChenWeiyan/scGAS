@@ -88,7 +88,7 @@ print(cpf$plot)
 ## Reference data
 
 The following pre-computed files are required and can be downloaded from
-[Zenodo](https://zenodo.org) *(DOI placeholder)*:
+[Zenodo](https://zenodo.org) *(10.5281/zenodo.19134899)*:
 
 | File | Description | Size |
 |------|-------------|------|
