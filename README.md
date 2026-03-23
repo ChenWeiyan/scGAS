@@ -28,11 +28,14 @@ The method is described in:
 ## Installation
 
 ```r
-# Install development version from GitHub
-remotes::install_github("ChenWeiyan/scGAS")
+# Required Bioconductor & Github packages
+if(!require("BiocManager")) install.packages("BiocManager")
+BiocManager::install(c("Signac", "EnsDb.Hsapiens.v75"))
+BiocManager::install("https://github.com/sankaranlab/SCAVENGE")
+BiocManager::install("caleblareau/gchromVAR")
 
-# Required Bioconductor packages
-BiocManager::install(c("Signac", "EnsDb.Hsapiens.v75", "SCAVENGE"))
+# Install development version from GitHub
+BiocManager::install("ChenWeiyan/scGAS")
 ```
 
 ---
