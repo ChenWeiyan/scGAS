@@ -106,7 +106,7 @@ scgas_compute <- function(seurat_obj,
 
   ## ── Pre-compute Gaussian-kernel distances: all cells to centroids ──────────
   if (verbose) message("[scGAS] Computing cell-to-centroid distances")
-  other_cells   <- setdiff(rownames(embeddings), centroid_cells)
+  other_cells   <- base::setdiff(rownames(embeddings), centroid_cells)
   dist_all      <- as.matrix(stats::dist(embeddings,
                                           method = "euclidean",
                                           diag   = TRUE,

@@ -81,11 +81,10 @@
 #' @importFrom rtracklayer import
 #' @importFrom Signac CreateFragmentObject FeatureMatrix CreateChromatinAssay
 #'   NucleosomeSignal TSSEnrichment FindTopFeatures RunTFIDF RunSVD
-#' @importFrom Seurat CreateSeuratObject CreateAssayObject merge
-#'   FindNeighbors FindClusters RunUMAP
+#' @importFrom Seurat CreateSeuratObject CreateAssayObject FindNeighbors FindClusters RunUMAP AddMetaData
 #' @importFrom Matrix Matrix
-#' @importFrom GenomicRanges findOverlaps 
-#' @importFrom GenomeInfoDb seqlevels seqlevels<- seqnames
+#' @importFrom GenomicRanges findOverlaps seqnames
+#' @importFrom GenomeInfoDb seqlevels 
 #' @export
 scgas_preprocess <- function(fragment_paths,
                              cre_bed_path,
@@ -188,13 +187,13 @@ scgas_preprocess <- function(fragment_paths,
   if (n_reps == 1) {
     obj <- seurat_list[[1]]
   } else {
-    obj <- Reduce(
-      function(a, b_idx) {
-        Seurat::merge(a, seurat_list[[b_idx]],
-                      add.cell.ids = replicate_ids[c(1, b_idx)])
-      },
-      seq(2, n_reps),
-      init = seurat_list[[1]]
+    ## merge() is the correct S3 generic for SeuratObjects in both Seurat v4
+    ## and v5.  Passing y as a list and add.cell.ids as a vector of length
+    ## n_reps prepends each replicate prefix exactly once across all barcodes.
+    obj <- merge(
+      x            = seurat_list[[1]],
+      y            = seurat_list[-1],   # list of remaining SeuratObjects
+      add.cell.ids = replicate_ids      # one prefix per replicate
     )
   }
   
@@ -336,16 +335,16 @@ scgas_preprocess <- function(fragment_paths,
     if (verbose)
       message("[scGAS] Fragment file uses NCBI-style chromosomes (no 'chr'); ",
               "stripping 'chr' prefix from BED seqlevels.")
-    GenomeInfoDb::seqlevels(gr) <-
-      gsub("^chr", "", GenomeInfoDb::seqlevels(gr))
+    GenomicRanges::seqlevels(gr) <-
+      gsub("^chr", "", GenomicRanges::seqlevels(gr))
     
   } else {
     ## BED has no "chr", fragments do -> add "chr" to BED seqlevels
     if (verbose)
       message("[scGAS] Fragment file uses UCSC-style chromosomes ('chr'); ",
               "adding 'chr' prefix to BED seqlevels.")
-    GenomeInfoDb::seqlevels(gr) <-
-      paste0("chr", GenomeInfoDb::seqlevels(gr))
+    GenomicRanges::seqlevels(gr) <-
+      paste0("chr", GenomicRanges::seqlevels(gr))
   }
   
   return(gr)
