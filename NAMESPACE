@@ -3,6 +3,7 @@
 export(scgas_add_assay)
 export(scgas_chromatin_potential)
 export(scgas_compute)
+export(scgas_metacell)
 export(scgas_preprocess)
 export(scgas_train_models)
 importFrom(GenomeInfoDb,seqlevels)

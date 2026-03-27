@@ -46,6 +46,9 @@
 #' @param n_cores Number of cores for \code{parallel::mclapply}.  Default
 #'   \code{1}.
 #' @param verbose Logical.  Default \code{TRUE}.
+#' @param metacell_membership Named integer vector of Metacell assignments
+#'   as returned by \code{\link{scgas_metacell}}.  When \code{NULL} (default),
+#'   falls back to \code{seurat_obj$seurat_clusters} for backward compatibility.
 #'
 #' @return A named list with one element per modelled gene, each containing:
 #'   \describe{
@@ -90,7 +93,8 @@ scgas_train_models <- function(seurat_obj,
                                lasso_alpha         = 1,
                                deviance_quantile   = 0.95,
                                n_cores             = 1L,
-                               verbose             = TRUE) {
+                               verbose             = TRUE,
+                               metacell_membership) {
 
   ## ── Input validation ───────────────────────────────────────────────────────
   stopifnot(
@@ -132,7 +136,11 @@ scgas_train_models <- function(seurat_obj,
 
   ## ── Metacell aggregation ───────────────────────────────────────────────────
   if (verbose) message("[scGAS] Aggregating counts into Metacells")
-  cl_labels <- seurat_obj$seurat_clusters
+  if (!is.null(metacell_membership)) {
+    cl_labels <- metacell_membership[colnames(seurat_obj)]
+  } else {
+    cl_labels <- seurat_obj$seurat_clusters
+  }
   cl_levels <- levels(as.factor(cl_labels))
 
   ## Subset the count matrix to relevant cCREs

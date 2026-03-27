@@ -39,12 +39,6 @@
 #' @param lsi_dims Integer vector of LSI components to use for UMAP and
 #'   neighbour graph construction.  Component 1 is almost always correlated
 #'   with sequencing depth and should be excluded.  Default \code{2:30}.
-#' @param cluster_resolution Louvain/Leiden resolution for high-resolution
-#'   clustering used to define Metacells.  A higher value produces more, smaller
-#'   clusters.  Default \code{1.5}.
-#' @param min_cells_per_cluster Approximate lower bound on the number of cells
-#'   per cluster.  If any cluster falls below this threshold a warning is
-#'   issued (the resolution may need to be lowered).  Default \code{100}.
 #' @param n_cores Number of cores passed to \code{parallel::mclapply}.
 #'   Default \code{1}.
 #' @param verbose Logical.  Print progress messages.  Default \code{TRUE}.
@@ -55,8 +49,6 @@
 #'       reduction.}
 #'     \item{\code{RNA}}{(Optional) RNA assay with log-normalised data and PCA
 #'       reduction.}
-#'     \item{\code{seurat_clusters}}{High-resolution cluster labels used
-#'       downstream to define Metacells.}
 #'     \item{\code{umap}}{3-component UMAP embedding for visualisation and
 #'       trajectory analysis.}
 #'   }
@@ -96,8 +88,6 @@ scgas_preprocess <- function(fragment_paths,
                              min_cells_per_feature  = 1L,
                              min_features_per_cell  = 1L,
                              lsi_dims          = 2:30,
-                             cluster_resolution = 1.5,
-                             min_cells_per_cluster  = 100L,
                              n_cores           = 1L,
                              verbose           = TRUE) {
   
@@ -229,31 +219,6 @@ scgas_preprocess <- function(fragment_paths,
   obj <- Signac::FindTopFeatures(obj, min.cutoff = "q10", verbose = verbose)
   obj <- Signac::RunTFIDF(obj, verbose = verbose)
   obj <- Signac::RunSVD(obj, verbose = verbose)
-  
-  ## ── High-resolution clustering for Metacell definition ────────────────────
-  if (verbose) message("[scGAS] Building neighbour graph & clustering ",
-                       "(resolution = ", cluster_resolution, ")")
-  obj <- Seurat::FindNeighbors(
-    object    = obj,
-    reduction = "lsi",
-    dims      = lsi_dims,
-    verbose   = verbose
-  )
-  obj <- Seurat::FindClusters(
-    object     = obj,
-    algorithm  = 3,
-    resolution = cluster_resolution,
-    verbose    = FALSE
-  )
-  
-  ## Warn if any cluster is very small
-  cl_sizes <- table(obj$seurat_clusters)
-  small_cl <- names(cl_sizes)[cl_sizes < min_cells_per_cluster]
-  if (length(small_cl) > 0)
-    warning("[scGAS] ", length(small_cl), " cluster(s) have fewer than ",
-            min_cells_per_cluster, " cells: ",
-            paste(small_cl, collapse = ", "),
-            ". Consider lowering cluster_resolution.")
   
   ## ── 3-component UMAP for trajectory analysis ──────────────────────────────
   if (verbose) message("[scGAS] Running UMAP (3 components)")

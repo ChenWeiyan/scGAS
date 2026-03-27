@@ -40,6 +40,9 @@
 #' @param n_cores Integer.  Cores for \code{parallel::mclapply}.  Default
 #'   \code{1}.
 #' @param verbose Logical.  Default \code{TRUE}.
+#' @param metacell_membership Named integer vector of Metacell assignments
+#'   as returned by \code{\link{scgas_metacell}}.  When \code{NULL} (default),
+#'   falls back to \code{seurat_obj$seurat_clusters} for backward compatibility.
 #'
 #' @return A genes x cells numeric matrix of scGAS values scaled to
 #'   \eqn{[0, 1]}.  Row names are gene symbols; column names are cell
@@ -75,7 +78,8 @@ scgas_compute <- function(seurat_obj,
                           gamma            = 0.05,
                           outlier_quantile = 0.95,
                           n_cores          = 1L,
-                          verbose          = TRUE) {
+                          verbose          = TRUE,
+                          metacell_membership) {
 
   ## ── Validation ─────────────────────────────────────────────────────────────
   stopifnot(
@@ -92,7 +96,11 @@ scgas_compute <- function(seurat_obj,
   embeddings <- seurat_obj@reductions$lsi@cell.embeddings[, lsi_dims,
                                                            drop = FALSE]
   n_cells    <- nrow(embeddings)
-  cl_labels  <- seurat_obj$seurat_clusters
+  if (!is.null(metacell_membership)) {
+    cl_labels <- metacell_membership[colnames(seurat_obj)]
+  } else {
+    cl_labels <- seurat_obj$seurat_clusters
+  }
   cl_levels  <- attr(trained_models, "cl_levels")
   sel_genes  <- names(trained_models)
 
